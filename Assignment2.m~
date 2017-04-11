@@ -1,0 +1,110 @@
+%exercise1
+clc;clear all;close all;
+rng(400)
+addpath Datasets/cifar-10-batches-mat/;
+tic;
+
+%"one" dataset
+[trainX,trainY,trainy] = LoadBatch('data_batch_1.mat');
+[validX,validY,validy] = LoadBatch('data_batch_2.mat');
+[testX,testY,testy] = LoadBatch('test_batch.mat');
+
+%center data
+mean_X = mean(trainX, 2);
+trainX = trainX - repmat(mean_X, [1, size(trainX, 2)]);
+validX = validX - repmat(mean_X, [1, size(trainX, 2)]);
+testX = testX - repmat(mean_X, [1, size(trainX, 2)]);
+
+
+
+% %all datasets
+% -----------------------
+% [train1X,train1Y,train1y] = LoadBatch('data_batch_1.mat');
+% [train2X,train2Y,train2y] = LoadBatch('data_batch_2.mat');
+% [train3X,train3Y,train3y] = LoadBatch('data_batch_3.mat');
+% [train4X,train4Y,train4y] = LoadBatch('data_batch_4.mat');
+% [train5X,train5Y,train5y] = LoadBatch('data_batch_5.mat');
+% [test5X,test5Y,test5y] = LoadBatch('test_batch.mat');
+% 
+% trainX = [train1X,train2X,train3X,train4X,train5X(:,1:9000)];
+% trainY = [train1Y,train2Y,train3Y,train4Y,train5Y(:,1:9000)];
+% trainy = [train1y;train2y;train3y;train4y;train5y(1:9000)];
+% 
+% validX = train5X(:,9001:end);
+% validY = train5Y(:,9001:end);
+% validy = train5y(9001:end);
+% testX = test5X;
+% testY = test5Y;
+% testy = test5y;
+
+%------------------------
+
+%disp([size(trainX),size(validX),size(testX)])
+N = length(trainy);
+d = size(trainX,1);
+K = max(trainy);
+lambda = 0;
+
+%initialize W and b
+
+
+Theta = initializeParams(trainX,trainY);
+EvaluateClassifier(trainX,Theta)
+
+
+%---------%---------%---------%---------%---------
+
+function [X,Y,y] = LoadBatch(filename)
+A = load(filename);
+X = double(A.data)'/255;
+y = double(A.labels+1);
+K = max(y);
+N = length(y);
+Y = zeros(K,N);
+for i = 1:N
+    Y(y(i),i) = 1;
+end
+end
+
+function Theta = initializeParams(X,Y)
+m=50;
+d = size(X,1);
+K = size(Y,1);
+W1 = .001*randn(m,d);
+W2 = .001*randn(K,m);
+b1 =zeros(m,1);
+b2 =zeros(K,1);
+Theta = {W1,W2,b1,b2};
+end
+
+function P = EvaluateClassifier(X,Theta)
+W1 = Theta{1};W2=Theta{2};b1=Theta{3};b2=Theta{4};
+s1 = bsxfun(@plus,W1*X,b1);
+
+h = s1.*(s1>0);
+s2 = bsxfun(@plus,W2*s1,b2);
+P = softmax(s2);
+disp(['size of P: ', num2str(size(P))])
+end
+
+function acc = ComputeAccuracy(X,y,W,b)
+p = EvaluateClassifier(X,W,b);
+[~,kstar] = max(p);
+check = kstar'==y;
+acc = sum(check)/length(check);
+end
+
+%cost function
+function J = ComputeCost(X,Y,Theta,lambda)
+W1 = Theta{1};W2=Theta{2};
+n = size(X,2);
+Wij = sum(sum(W1.^2,1),2) + sum(sum(W2.^2,1),2);
+J = (1/n)*sum(lcross(X,Y,Theta))+lambda*Wij;
+end
+
+%function for l cross section
+function l = lcross(X,Y,W,b)
+W1 = Theta{1};W2=Theta{2};b1=Theta{3};b2=Theta{4};
+l = -log(sum(Y.*EvaluateClassifier(X,W,b)));
+end
+
