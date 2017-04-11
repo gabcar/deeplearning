@@ -1,7 +1,7 @@
 %exercise1
 clc;clear all;close all;
 rng(400)
-addpath Datasets/cifar-10-batches-mat/; addpath lab2funs;
+addpath Datasets/cifar-10-batches-mat/;
 tic;
 
 %"one" dataset
@@ -25,11 +25,11 @@ testX = testX - repmat(mean_X, [1, size(trainX, 2)]);
 % [train4X,train4Y,train4y] = LoadBatch('data_batch_4.mat');
 % [train5X,train5Y,train5y] = LoadBatch('data_batch_5.mat');
 % [test5X,test5Y,test5y] = LoadBatch('test_batch.mat');
-% 
+%
 % trainX = [train1X,train2X,train3X,train4X,train5X(:,1:9000)];
 % trainY = [train1Y,train2Y,train3Y,train4Y,train5Y(:,1:9000)];
 % trainy = [train1y;train2y;train3y;train4y;train5y(1:9000)];
-% 
+%
 % validX = train5X(:,9001:end);
 % validY = train5Y(:,9001:end);
 % validy = train5y(9001:end);
@@ -51,9 +51,9 @@ P = EvaluateClassifier(trainX,W,b);
 acc = ComputeAccuracy(trainX,trainy,W,b);
 cost = ComputeCost(trainX,trainY,W,b,lambda);
 
-[grad_W,grad_b] = MyComputeGrads(trainX,trainY,W,b,lambda);
+[grad_W,grad_b] = ComputeGradients(trainX,trainY,W,b,lambda);
 
-
+toc
 %---------%---------%---------%---------%---------
 
 function [X,Y,y] = LoadBatch(filename)
@@ -136,22 +136,87 @@ grad_b = {grad_b1,grad_b2};
 end
 
 %gradient comparing function
-function [ngrad_W, ngrad_b,diff] = ComputeGradients(X,Y,W,b,lambda)
-[ngrad_W1,ngrad_W2, ngrad_b1,ngrad_b2] = MyComputeGrads(X(:,1), Y(:,1), ...
+function [agrad_W, agrad_b,diff] = ComputeGradients(X,Y,W,b,lambda)
+[agrad_W, agrad_b] = MyComputeGrads(X(:,1), Y(:,1), ...
     W,b, lambda);
-[fastngrad_b1,fastngrad_W1] = ComputeGradsNumSlow(X(:,1),Y(:,1),W,b,lambda,1e-6);
-[slowngrad_b1,slowngrad_W1] = ComputeGradsNum(X(:,1),Y(:,1),W,b,lambda,1e-6);
+[fastngrad_b,fastngrad_W] = ComputeGradsNum(X(:,1),Y(:,1),W,b,lambda,1e-5);
+toc
+[slowngrad_b,slowngrad_W] = ComputeGradsNumSlow(X(:,1),Y(:,1),W,b,lambda,1e-5);
+toc
 
-diffb1_fast = max(max(abs(ngrad_b1-fastngrad_b1)))
-diffb1_slow = max(max(abs(ngrad_b1-slowngrad_b1)))
-diffW1_fast = max(max(abs(ngrad_W1-fastngrad_W1)))
-diffW1_slow = max(max(abs(ngrad_W1-slowngrad_W1)))
-diffb2_fast = max(max(abs(ngrad_b2-fastngrad_b2)))
-diffb2_slow = max(max(abs(ngrad_b2-slowngrad_b2)))
-diffW2_fast = max(max(abs(ngrad_W2-fastngrad_W2)))
-diffW2_slow = max(max(abs(ngrad_W2-slowngrad_W2)))
+diffb1_fast = max(max(abs(agrad_b{1}-fastngrad_b{1})))
+diffb1_slow = max(max(abs(agrad_b{1}-slowngrad_b{1})))
+diffW1_fast = max(max(abs(agrad_W{1}-fastngrad_W{1})))
+diffW1_slow = max(max(abs(agrad_W{1}-slowngrad_W{1})))
+diffb2_fast = max(max(abs(agrad_b{2}-fastngrad_b{2})))
+diffb2_slow = max(max(abs(agrad_b{2}-slowngrad_b{2})))
+diffW2_fast = max(max(abs(agrad_W{2}-fastngrad_W{2})))
+diffW2_slow = max(max(abs(agrad_W{2}-slowngrad_W{2})))
 
 diff = diffW1_fast;
 diff =0;
+end
+
+
+%-----------------------------------------------------------------%
+%GRADIENT FUNCTIONS
+%SLOW
+function [grad_b, grad_W] = ComputeGradsNumSlow(X, Y, W, b, lambda, h)
+
+grad_W = {zeros(size(W{1})),zeros(size(W{2}))};
+grad_b = {zeros(size(W{1}, 1), 1),zeros(size(W{2}, 1), 1)};
+
+for k=1:length(b)
+    for i=1:length(b{k})
+        b_try = b;
+        b_try{k}(i) = b_try{k}(i) - h;
+        c1 = ComputeCost(X, Y, W, b_try, lambda);
+        b_try = b;
+        b_try{k}(i) = b_try{k}(i) + h;
+        c2 = ComputeCost(X, Y, W, b_try, lambda);
+        grad_b{k}(i) = (c2-c1) / (2*h);
+    end
+end
+for k=1:length(W)
+    for i=1:numel(W{k})
+        W_try = W;
+        W_try{k}(i) = W_try{k}(i) - h;
+        c1 = ComputeCost(X, Y, W_try, b, lambda);
+        
+        W_try = W;
+        W_try{k}(i) = W_try{k}(i) + h;
+        c2 = ComputeCost(X, Y, W_try, b, lambda);
+        
+        grad_W{k}(i) = (c2-c1) / (2*h);
+    end
+end
+end
+
+%FAST
+function [grad_b, grad_W] = ComputeGradsNum(X, Y, W, b, lambda, h)
+
+grad_W = {zeros(size(W{1})),zeros(size(W{2}))};
+grad_b = {zeros(size(W{1}, 1), 1),zeros(size(W{2}, 1), 1)};
+
+c = ComputeCost(X, Y, W, b, lambda);
+
+for k=1:length(b)
+    for i=1:length(b{k})
+        b_try = b;
+        b_try{k}(i) = b_try{k}(i) + h;
+        
+        c2 = ComputeCost(X, Y, W, b_try, lambda);
+        grad_b{k}(i) = (c2-c) / h;
+    end
+end
+
+for k=1:length(W)
+    for i=1:numel(W{k})
+        W_try = W;
+        W_try{k}(i) = W_try{k}(i) + h;
+        c2 = ComputeCost(X, Y, W_try, b, lambda);
+        grad_W{k}(i) = (c2-c) / h;
+    end
+end
 end
 

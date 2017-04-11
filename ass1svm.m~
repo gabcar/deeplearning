@@ -152,8 +152,8 @@ N = size(X,2);
 s_class = s.*(Y~=0); %these are both KxN
 s_not_class = s.*(Y==0);
 
-s_y = sum(s_class); %1xN
-s_temp = (s_not_class -s_y + 1); KxN
+s_y = sum(s_class);
+s_temp = (s_not_class -s_y + 1);
 s_temp = s_temp.*(Y==0);
 s = s_temp.*(s_temp>0);
 
